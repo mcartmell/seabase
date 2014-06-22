@@ -1,6 +1,8 @@
 # Seabase
 
-Seabase is an underwater HTML5 Roguelike built with Phaser and ROT.js.
+Seabase is an **underwater** HTML5 Roguelike built with Phaser and ROT.js.
+
+[Under construction sign]
 
 ## Running
 
@@ -11,12 +13,12 @@ Dependencies for compiling:
 * browserify
 * coffeeify
 
-* Copy dependencies into .js:
+* Copy dependencies into `js/`:
   * phaser.min.js
   * rot.js
   * hammer.min.js
-* Compile using:
-  * watchify -t coffeeify --extension=".coffee" seabase.coffee -o seabase.js
+* Compile using (yes this is ridiculous):
+  * `watchify -t coffeeify --extension=".coffee" seabase.coffee -o seabase.js`
 
 ## Features:
 
