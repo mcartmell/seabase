@@ -1,5 +1,7 @@
 _ = require('underscore')
 require './entity'
+require './entity/monster'
+require './entity/player'
 require './feature'
 class Seabase.Map
   MoveType = {
@@ -7,6 +9,7 @@ class Seabase.Map
     OK: 1
     FIGHT: 2
   }
+  @MoveType = MoveType
 
   randInt = (min,max) ->
     Math.floor(Math.random() * (max-min+1)+min)
@@ -30,12 +33,25 @@ class Seabase.Map
     @rotMap()
     @placeUpExit() unless @level == 0
     @placeDownExit()
+    @createMonsters()
     if spawnExit = args['spawnOn']
-      coords = @exits[spawnExit]
-      @spawnPlayer(coords)
+      @placePlayerOnExit(spawnExit, args['player'])
     else
       @spawnPlayer()
-    @drawPlayerVisible()
+    @redraw()
+    @log ''
+
+  placePlayerOnExit: (exit, player = null) ->
+    coords = @exits[exit]
+    @spawnPlayer(coords, player)
+
+  tick: ->
+    @moveMonsters()
+
+  moveMonsters: ->
+    for e in @ents
+      if e.isMonster
+        e.doMove(this)
 
   interact: ->
     sp = @playerSpace()
@@ -45,12 +61,15 @@ class Seabase.Map
       if sp.isUpExit()
         @sb.goUp()
     else
+      @tick()
 
   reEnter: (args = {}) ->
+    @placePlayerOnExit(args['spawnOn'], args['player'])
     @redraw()
 
   redraw: ->
     @drawPlayerVisible()
+    @sb.refreshStatus()
 
   initMap: ->
     @map = []
@@ -77,16 +96,20 @@ class Seabase.Map
     return false if @map[y][x] == '#'
     return true
 
+  # hide monsters that are no longer visible
+  clearScreen: ->
+    @sb.eachCell (x,y) =>
+      if @entityAt(x,y)
+        @screen()[y][x].text = ''
   drawVisible: (px,py,amt) ->
-    # kinda looks better if we don't clear the screen...
-    #@clearScreen()
+    @clearScreen()
     fov = new ROT.FOV.PreciseShadowcasting(@lightPasses)
     fov.compute px,py,amt, (x, y, r, vis) =>
       if x?
         if vis == 1
           @screen()[y][x].text = if r
             if ent = @entityAt(x,y)
-              ent.char
+              ent.toString()
             else
               @map[y][x].toString()
           else
@@ -122,13 +145,23 @@ class Seabase.Map
   placeUpExit: ->
     @exits['<'] = @placeFeature('<')
 
-  spawnPlayer: (coords = null) ->
+  spawnPlayer: (coords = null, player = null) ->
     unless coords
       coords = @findSpaceInRoom()
     [x,y] = coords
-    @player = new Seabase.Entity(x,y,10,'@')
-    @ents.push @player
-    @placeEntity(@player,x,y)
+    @player = player || new Seabase.Entity.Player(x,y,10,'@',this,name: 'player')
+    @player.x = x
+    @player.y = y
+    @createEntity(@player)
+
+  createEntity: (ent) ->
+    @ents.push ent
+    @moveEntity(ent,ent.x,ent.y)
+
+  destroyEntity: (ent) ->
+    @ents = _.reject @ents, (e) ->
+      e == ent
+    @removeEntity(ent.x, ent.y)
 
   drawPlayerVisible: ->
     @drawVisible(@player.x, @player.y, 5)
@@ -174,17 +207,46 @@ class Seabase.Map
         else
           MoveType.OK
 
+  tryEntityMove: (ent,x,y) ->
+    switch @canMove(ent, x, y)
+      when MoveType.OK
+        @moveEntity(ent, x, y)
+      when MoveType.FIGHT
+        @doCombat(ent, @entityAt(x,y)) 
+
+  log: (msg) -> 
+    if @sb.statusBars['bottom']
+      @sb.statusBars['bottom'].text = msg
+  
+  doCombat: (agg, tgt) ->
+    dmg = randInt(1, agg.power)
+    tgt.hp -= dmg
+    if tgt.hp <= 0
+      if tgt == @player
+        @log "Vanquished by a #{agg.name}"
+        @sb.endGame()
+      else
+        @log "#{agg.name} kills #{tgt.name}"
+        @destroyEntity(tgt)
+    else
+      @log "#{agg.name} attacks #{tgt.name}"
+
   tryPlayerMove: (direction) ->
+    @sb.statusBars['bottom'].text = direction
     nl = @newLoc @player.x, @player.y, direction
     [x,y] = nl
-    switch @canMove(@player, x, y)
-      when MoveType.OK
-        @moveEntity(@player, x, y)
-      when MoveType.FIGHT
-      else
+    @tryEntityMove(@player, x, y)
+    @tick()
 
   playerSquare: ->
     @screen()[@player.y][@player.x]
 
   playerSpace: ->
     @map[@player.y][@player.x]
+
+  createMonsters: ->
+    for i in [1..10]
+      [x,y] = @findSpaceInRoom()
+      m = new Seabase.Entity.Monster(x,y,10,'e',this,name: 'monster')
+      @createEntity(m)
+

@@ -1,2 +1,22 @@
 class Seabase.Entity
-  constructor: (@x, @y, @hp, @char) ->
+  constructor: (@x, @y, @hp, @char, @map, args = {}) ->
+    @name = args['name'] || 'something'
+    @power = 3
+  toString: ->
+    @char
+  right: ->
+    [@x + 1, @y]
+  left: ->
+    [@x - 1, @y]
+  up: ->
+    [@x, @y - 1]
+  down: ->
+    [@x, @y + 1]
+  possibleMoves: ->
+    allMoves = {}
+    for move in ['up', 'down', 'left', 'right']
+      [x,y] = this[move]()
+      cm = @map.canMove(this, x, y)
+      allMoves[cm] ||= []
+      allMoves[cm].push [x,y]
+    allMoves

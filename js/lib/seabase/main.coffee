@@ -7,29 +7,46 @@ class Seabase.Main
     
   onKeyUp: (event) =>
     dir = null
-    dir = switch event.keyCode
-      when Phaser.Keyboard.LEFT
-        'left' 
-      when Phaser.Keyboard.RIGHT
-        'right' 
-      when Phaser.Keyboard.UP
-        'up' 
-      when Phaser.Keyboard.DOWN
-        'down'
-      else
-        null
+    unless @gameOver
+      dir = switch event.keyCode
+        when Phaser.Keyboard.LEFT
+          'left' 
+        when Phaser.Keyboard.RIGHT
+          'right' 
+        when Phaser.Keyboard.UP
+          'up' 
+        when Phaser.Keyboard.DOWN
+          'down'
+        else
+          null
     if dir
       @map.tryPlayerMove(dir)
-      @map.redraw()
-      @game.camera.follow(@map.playerSquare())
-    switch event.keyCode
-      when 190 # >
-        @map.interact()
-      when Phaser.Keyboard.SPACEBAR
+
+    interactPressed = (event.keyCode == 190 || event.keyCode == Phaser.Keyboard.SPACEBAR)
+    if interactPressed
+      if @gameOver
+        @restartGame()
+        return
+      else
         @map.interact()
 
-  constructor: (rows,cols,font,drows,dcols) ->
+    @map.redraw()
+    @game.camera.follow(@map.playerSquare())
+
+  endGame: ->
+    @gameOver = true
+
+  restartGame: ->
     @levels = {}
+    @current_level = 0
+    @gameOver = false
+    @map = null
+    @initMap()
+
+  constructor: (rows,cols,font,drows,dcols) ->
+    @statusBars = {}
+    @levels = {}
+    @gameOver = false
     @current_level = 0
     @ROWS = rows
     @COLS = cols
@@ -40,29 +57,31 @@ class Seabase.Main
   centerCamera: ->
     @game.camera.follow(@map.playerSquare())
 
-  goToLevel: (level) ->
+  goToLevel: (level, args = {}) ->
     @clearScreen()
+    # move the current player if we already have one
+    if level == 0
+      args['spawnOn'] = '>'
+    if @map
+      args['player'] = @map.player
     if @levels[level]
       @map = @levels[level]
-      #TODO: put player on staircase
-      @map.reEnter()
+      @map.reEnter(args)
     else
       @map = @levels[level] = @newMap(level)
+      @map.init(args)
     @current_level = level
     @centerCamera()
+    @refreshStatus()
 
   goDown: ->
-    @goToLevel(@current_level + 1)
+    @goToLevel(@current_level + 1, spawnOn: '<')
 
   goUp: ->
-    @goToLevel(@current_level - 1)
+    @goToLevel(@current_level - 1, spawnOn: '>')
 
   newMap: (level) ->
     map = new Seabase.Map(this,@rows(),@cols(),@font(),level)
-    if level == 0
-      map.init(spawnOn: '>')
-    else
-      map.init(spawnOn: '<')
     map
 
   rows: ->
@@ -105,6 +124,39 @@ class Seabase.Main
       for x in [0..@COLS-1]
         cb(x,y)
 
+  totalHeight: ->
+    @displayRows() * @font()
+
+  totalWidth: ->
+    @displayCols() * 0.6 * @font()
+
+  createStatusBars: ->
+    @createStatusBar 'top', 0
+    @createStatusBar 'bottom', @totalHeight() - (20 * 2)
+    @statusBars['top'].text = 'Welcome to Seabase!'
+
+  createStatusBar: (name, sbTop) ->
+    g = @game.add.graphics(0,0)
+    sbFont = 20
+    sbHeight = (sbFont * 2)
+
+    # status bar background
+    g.beginFill(0x000000, 0.3)
+    g.drawRect(0,0,@totalWidth(), sbHeight)
+    g.endFill()
+    g.fixedToCamera = true
+    g.cameraOffset.setTo(0, sbTop)
+
+    # starus bar text
+    t = @game.add.text(0, 0, '', { font: sbFont + 'px monospace', fill: '#fff', align: 'left' })
+    t.fixedToCamera = true
+    t.cameraOffset.setTo(0, sbTop)
+    @statusBars[name] = t
+
+  refreshStatus: ->
+    return unless @statusBars['top']
+    @statusBars['top'].text = 'Seabase   HP:' + @map.player.hp + ' XP:' + @map.player.xp + ' Lvl:' + @current_level
+
   create: =>
     # make world bigger than camera
     @game.world.setBounds(0, 0, @cols() * @font() * 0.6, @rows() * @font())
@@ -115,21 +167,29 @@ class Seabase.Main
     # initialize screen
     @initScreen()
     @initMap()
+
+    # create status bar
+    @createStatusBars()
+
     # scale to fit visible screen
+    @game.scale.fullScreenScaleMode = Phaser.ScaleManager.SHOW_ALL
     @game.scale.startFullScreen()
     @game.scale.setShowAll()
     @game.scale.refresh()
 
     # set up swipe events
     el = document.getElementById('phaser-example') 
-    Hammer(el).on 'swipedown', =>
+    ham = Hammer(el, preventDefault: true)
+    ham.on 'swipedown', (e) =>
       @onSwipe 'down'
-    Hammer(el).on 'swipeup', =>
+    ham.on 'swipeup', =>
       @onSwipe 'up'
-    Hammer(el).on 'swipeleft', =>
+    ham.on 'swipeleft', =>
       @onSwipe 'left'
-    Hammer(el).on 'swiperight', =>
+    ham.on 'swiperight', =>
       @onSwipe 'right'
+    ham.on 'tap', =>
+      @map.interact()
   preload: =>
     @game.stage.backgroundColor = "#002b36"
   update: =>
