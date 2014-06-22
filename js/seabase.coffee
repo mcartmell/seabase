@@ -1,4 +1,8 @@
-window.Seabase = {}
+window._ = require 'underscore'
+window.Seabase =
+  randInt: (min,max) ->
+    Math.floor(Math.random() * (max-min+1)+min)
+require './lib/seabase/config'
 require './lib/seabase/main'
 require './lib/seabase/map'
 require 'underscore'

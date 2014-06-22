@@ -47,6 +47,7 @@ class Seabase.Map
 
   tick: ->
     @moveMonsters()
+    @sb.incTurns()
 
   moveMonsters: ->
     for e in @ents
@@ -149,7 +150,7 @@ class Seabase.Map
     unless coords
       coords = @findSpaceInRoom()
     [x,y] = coords
-    @player = player || new Seabase.Entity.Player(x,y,10,'@',this,name: 'player')
+    @player = player || new Seabase.Entity.Player(x,y,this,char: '@',name: 'player', hp: 10)
     @player.x = x
     @player.y = y
     @createEntity(@player)
@@ -219,7 +220,7 @@ class Seabase.Map
       @sb.statusBars['bottom'].text = msg
   
   doCombat: (agg, tgt) ->
-    dmg = randInt(1, agg.power)
+    dmg = randInt(0, agg.power)
     tgt.hp -= dmg
     if tgt.hp <= 0
       if tgt == @player
@@ -227,9 +228,14 @@ class Seabase.Map
         @sb.endGame()
       else
         @log "#{agg.name} kills #{tgt.name}"
+        @giveXP(tgt)
         @destroyEntity(tgt)
     else
       @log "#{agg.name} attacks #{tgt.name}"
+
+  giveXP: (monster) ->
+    xp = (monster.level) * (monster.level + 6) + 1
+    @player.giveXP(xp)
 
   tryPlayerMove: (direction) ->
     @sb.statusBars['bottom'].text = direction
@@ -245,8 +251,16 @@ class Seabase.Map
     @map[@player.y][@player.x]
 
   createMonsters: ->
+    allMonsters = _.values(SBConf.monsters)
+
+    # find suitable monsters up to the current level
+    monsterPool = _.filter allMonsters, (mon) ->
+      mon.level <= @sb.current_level + 1
+
+    # create 10 monsters?
     for i in [1..10]
       [x,y] = @findSpaceInRoom()
-      m = new Seabase.Entity.Monster(x,y,10,'e',this,name: 'monster')
+      mon = _.shuffle(monsterPool)[0]
+      m = new Seabase.Entity.Monster(x, y, this, hp: mon.hp, name: mon.name, char: mon.char, level: mon.level, power: mon.power)
       @createEntity(m)
 

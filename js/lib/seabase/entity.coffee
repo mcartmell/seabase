@@ -1,7 +1,9 @@
 class Seabase.Entity
-  constructor: (@x, @y, @hp, @char, @map, args = {}) ->
+  constructor: (@x, @y, @map, args = {}) ->
     @name = args['name'] || 'something'
-    @power = 3
+    @char = args['char']
+    @hp = @maxhp = args['hp'] || 10
+    @power = args['power'] || 1
   toString: ->
     @char
   right: ->

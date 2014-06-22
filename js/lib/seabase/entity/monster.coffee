@@ -1,8 +1,9 @@
 _ = require 'underscore'
 
 class Seabase.Entity.Monster extends Seabase.Entity
-  constructor: ->
-    super
+  constructor: (x,y,m,args) ->
+    super(x,y,m,args)
+    @level = args['level'] || 1
     @isMonster = true
 
   doMove: (map) ->

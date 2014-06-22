@@ -37,6 +37,7 @@ class Seabase.Main
     @gameOver = true
 
   restartGame: ->
+    @turns = 0
     @levels = {}
     @current_level = 0
     @gameOver = false
@@ -48,17 +49,23 @@ class Seabase.Main
     @levels = {}
     @gameOver = false
     @current_level = 0
+    @turns = 0
     @ROWS = rows
     @COLS = cols
     @FONT = font
     @DROWS = drows
     @DCOLS = dcols
 
+  incTurns: ->
+    @turns += 1
+    if (@turns % (15 - @map.player.rank + 1)) == 0
+      @map.player.giveHP(1)
   centerCamera: ->
     @game.camera.follow(@map.playerSquare())
 
   goToLevel: (level, args = {}) ->
     @clearScreen()
+    @current_level = level
     # move the current player if we already have one
     if level == 0
       args['spawnOn'] = '>'
@@ -70,7 +77,6 @@ class Seabase.Main
     else
       @map = @levels[level] = @newMap(level)
       @map.init(args)
-    @current_level = level
     @centerCamera()
     @refreshStatus()
 
@@ -132,13 +138,13 @@ class Seabase.Main
 
   createStatusBars: ->
     @createStatusBar 'top', 0
-    @createStatusBar 'bottom', @totalHeight() - (20 * 2)
+    @createStatusBar 'bottom', @totalHeight() - (18 * 2)
     @statusBars['top'].text = 'Welcome to Seabase!'
 
   createStatusBar: (name, sbTop) ->
     g = @game.add.graphics(0,0)
-    sbFont = 20
-    sbHeight = (sbFont * 2)
+    sbFont = 16 
+    sbHeight = ((sbFont + 2) * 2)
 
     # status bar background
     g.beginFill(0x000000, 0.3)
@@ -155,7 +161,7 @@ class Seabase.Main
 
   refreshStatus: ->
     return unless @statusBars['top']
-    @statusBars['top'].text = 'Seabase   HP:' + @map.player.hp + ' XP:' + @map.player.xp + ' Lvl:' + @current_level
+    @statusBars['top'].text = 'Seabase   HP:' + @map.player.hp + '(' + @map.player.maxhp + ') XP:' + @map.player.xp + ' Lvl: ' + @map.player.rank + ' Dlvl:' + @current_level
 
   create: =>
     # make world bigger than camera
