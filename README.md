@@ -28,15 +28,16 @@ Dependencies for compiling:
 * Enemies
 * Combat
 * Death
+* XP and leveling
+* Difficulty (different enemies)
 
 ## TODO:
 
-* Difficulty (different enemies)
-* XP and leveling
 * Items
   * Weapons
   * Armour
   * Loot
 * Scoreboard
 * Better AI
+* More enemies
 * Interesting stuff
