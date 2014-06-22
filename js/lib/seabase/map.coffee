@@ -1,5 +1,6 @@
 _ = require('underscore')
 require './entity'
+require './feature'
 class Seabase.Map
   MoveType = {
     NO: 0
@@ -9,32 +10,44 @@ class Seabase.Map
 
   randInt = (min,max) ->
     Math.floor(Math.random() * (max-min+1)+min)
-  eachCell = (cb) ->
-    for y in [0..@ROWS-1]
-      for x in [0..@COLS-1]
-        cb(x,y)
 
   loc = (x,y) ->
     "#{x},#{y}"
 
-  constructor: (sb,rows, cols, font, drows, dcols) ->
+  constructor: (sb, rows, cols, font, level) ->
     @map = null
-    @screen = null
     @ROWS = rows
     @COLS = cols
     @FONT = font
-    @DISPLAY_ROWS = drows
-    @DISPLAY_COLS = dcols
     @sb = sb
+    @level = level
     @ents = []
     @entMap = {}
+    @exits = {}
 
-  init: ->
+  init: (args = {}) ->
     @initMap()
     @rotMap()
-    @initScreen()
-    @spawnPlayer()
+    @placeUpExit() unless @level == 0
+    @placeDownExit()
+    if spawnExit = args['spawnOn']
+      coords = @exits[spawnExit]
+      @spawnPlayer(coords)
+    else
+      @spawnPlayer()
     @drawPlayerVisible()
+
+  interact: ->
+    sp = @playerSpace()
+    if sp instanceof Seabase.Feature
+      if sp.isDownExit()
+        @sb.goDown()
+      if sp.isUpExit()
+        @sb.goUp()
+    else
+
+  reEnter: (args = {}) ->
+    @redraw()
 
   redraw: ->
     @drawPlayerVisible()
@@ -51,54 +64,71 @@ class Seabase.Map
   drawRot: (x, y, wall) =>
     @map[y][x] = if wall then '#' else '.'
 
-  initCell: (chr,x,y) ->
-    style = { font: @FONT + "px monospace", fill:"#fff"}
-    @sb.game.add.text(@FONT*0.6*x, @FONT*y, chr, style)
-
   drawMap: ->
-    eachCell (x,y) =>
-      @screen[y][x].text = @map[y][x]
+    @sb.eachCell (x,y) =>
+      @screen()[y][x].text = @map[y][x]
+
+  screen: ->
+    @sb.screen
 
   lightPasses: (x,y) =>
-    if !(x? && y? && x < @COLS && y < @ROWS)
+    if !(x? && y? && x >= 0 && y >= 0 && x < @COLS && y < @ROWS)
       return false
     return false if @map[y][x] == '#'
     return true
 
-  initScreen: ->
-    @screen = []
-    for y in [0..@ROWS-1]
-      newRow = []
-      for x in [0..@COLS-1]
-        newRow.push @initCell('', x, y)
-      @screen.push newRow
-
-  clearScreen: ->
-    eachCell (x, y) =>
-      @screen[y][x].text = ''
-
   drawVisible: (px,py,amt) ->
-    @clearScreen()
+    # kinda looks better if we don't clear the screen...
+    #@clearScreen()
     fov = new ROT.FOV.PreciseShadowcasting(@lightPasses)
     fov.compute px,py,amt, (x, y, r, vis) =>
       if x?
         if vis == 1
-          @screen[y][x].text = if r then @map[y][x] else '@'
+          @screen()[y][x].text = if r
+            if ent = @entityAt(x,y)
+              ent.char
+            else
+              @map[y][x].toString()
+          else
+            '@'
 
   findAnyRoom: ->
     _.shuffle(@rotmap.getRooms())[0]
 
-  findSpaceInRoom: ->
+  findSpaceForFeature: ->
+    @findSpaceInRoom(forFeature: true)
+
+  findSpaceInRoom: (args = {}) ->
     theroom = @findAnyRoom()
-    x = randInt(theroom._x1, theroom._x2)
-    y = randInt(theroom._y1, theroom._y2)
+    space = null
+    loop
+      x = randInt(theroom._x1, theroom._x2)
+      y = randInt(theroom._y1, theroom._y2)
+      space = [x,y]
+      if args['forFeature']
+        break if @isMapEmpty(x,y)
+      else
+        break if @isEmpty(x,y)
+    space
+
+  placeFeature: (char) ->
+    [x,y] = @findSpaceForFeature()
+    @map[y][x] = new Seabase.Feature(char)
     [x,y]
 
-  spawnPlayer: ->
-    coords = @findSpaceInRoom()
+  placeDownExit: ->
+    @exits['>'] = @placeFeature('>')
+
+  placeUpExit: ->
+    @exits['<'] = @placeFeature('<')
+
+  spawnPlayer: (coords = null) ->
+    unless coords
+      coords = @findSpaceInRoom()
     [x,y] = coords
-    @player = new Seabase.Entity(x,y,10)
+    @player = new Seabase.Entity(x,y,10,'@')
     @ents.push @player
+    @placeEntity(@player,x,y)
 
   drawPlayerVisible: ->
     @drawVisible(@player.x, @player.y, 5)
@@ -124,6 +154,12 @@ class Seabase.Map
       when 'down' then [x,y+1]
       when 'right' then [x+1,y]
       when 'left' then [x-1,y]
+
+  isEmpty: (x,y) ->
+    @canMove(null,x,y) == MoveType.OK
+
+  isMapEmpty: (x,y) ->
+    @map[y][x] == '.'
   
   canMove: (entity, x, y) ->
     # currently, assume every entity has same movement rules
@@ -135,6 +171,8 @@ class Seabase.Map
       return switch square
         when '#' then MoveType.NO
         when '.' then MoveType.OK
+        else
+          MoveType.OK
 
   tryPlayerMove: (direction) ->
     nl = @newLoc @player.x, @player.y, direction
@@ -146,4 +184,7 @@ class Seabase.Map
       else
 
   playerSquare: ->
-    @screen[@player.y][@player.x]
+    @screen()[@player.y][@player.x]
+
+  playerSpace: ->
+    @map[@player.y][@player.x]

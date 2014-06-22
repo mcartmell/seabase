@@ -1,2 +1,2 @@
 class Seabase.Entity
-  constructor: (@x, @y, @hp) ->
+  constructor: (@x, @y, @hp, @char) ->
