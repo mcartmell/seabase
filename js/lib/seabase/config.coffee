@@ -12,3 +12,9 @@ window.SBConf =
       hp: 10
       name: 'merlion'
       char: 'm'
+    brin:
+      level: 3
+      power: 20
+      hp: 100
+      name: 'brin'
+      char: 'B'

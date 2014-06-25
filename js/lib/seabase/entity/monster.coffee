@@ -11,7 +11,6 @@ class Seabase.Entity.Monster extends Seabase.Entity
     sel_moves = []
     f_moves = moves[Seabase.Map.MoveType.FIGHT]
     if f_moves && f_moves.length > 0
-      console.log 'can attack!'
       sel_moves = moves[Seabase.Map.MoveType.FIGHT]
       sel_moves = _.filter sel_moves, (e) =>
         if target = @map.entityAt(e[0], e[1])

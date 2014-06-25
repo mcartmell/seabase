@@ -218,13 +218,16 @@ class Seabase.Map
   log: (msg) -> 
     if @sb.statusBars['bottom']
       @sb.statusBars['bottom'].text = msg
+
+  pop: (msg) ->
+    @sb.pop(msg)
   
   doCombat: (agg, tgt) ->
     dmg = randInt(0, agg.power)
     tgt.hp -= dmg
     if tgt.hp <= 0
       if tgt == @player
-        @log "Vanquished by a #{agg.name}"
+        @pop "Vanquished by a #{agg.name}"
         @sb.endGame()
       else
         @log "#{agg.name} kills #{tgt.name}"
