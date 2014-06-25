@@ -108,13 +108,18 @@ class Seabase.Map
     fov.compute px,py,amt, (x, y, r, vis) =>
       if x?
         if vis == 1
-          @screen()[y][x].text = if r
+          cell = @screen()[y][x]
+          fillColour = SBConf.colours['base01']
+          if r
             if ent = @entityAt(x,y)
-              ent.toString()
+              cell.text = ent.toString()
+              fillColour = ent.colour() if ent.colour()
             else
-              @map[y][x].toString()
+              cell.text = @map[y][x].toString()
           else
-            '@'
+            cell.text = '@'
+            fillColour = '#fff'
+          cell.fill = fillColour
 
   findAnyRoom: ->
     _.shuffle(@rotmap.getRooms())[0]

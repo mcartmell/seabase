@@ -22,3 +22,6 @@ class Seabase.Entity
       allMoves[cm] ||= []
       allMoves[cm].push [x,y]
     allMoves
+  colour: ->
+
+    SBConf.colours[SBConf.monsters[@name]['colour']] 
