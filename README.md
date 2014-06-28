@@ -4,21 +4,26 @@ Seabase is an **underwater** HTML5 Roguelike built with Phaser and ROT.js.
 
 [Under construction sign]
 
-## Running
+## Building
 
-Dependencies for compiling:
+Build using NodeJS and browserify:
 
-* npm
-* coffee-script
-* browserify
-* coffeeify
+```
+$ npm install
+$ cake build
+```
 
-* Copy dependencies into `js/`:
-  * phaser.min.js
-  * rot.js
-  * hammer.min.js
-* Compile using (yes this is ridiculous):
-  * `watchify -t coffeeify --extension=".coffee" seabase.coffee -o seabase.js`
+Requires a local webserver. I use [knod](https://github.com/moserrya/knod), `gem install knod`. Then:
+
+```
+$ knod
+```
+
+### Developing
+
+You can also use `watchify` to automatically compile:
+
+  * `watchify -t coffeeify --extension=".coffee" src/seabase.coffee -o js/seabase.js`
 
 ## Features:
 
