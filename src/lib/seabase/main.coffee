@@ -1,4 +1,6 @@
 Hammer = require 'hammerjs'
+require './log'
+
 class Seabase.Main
 
   onSwipe: (dir) ->
@@ -170,15 +172,19 @@ class Seabase.Main
   createPopup: (msg) ->
     @clearPopup() if @popupActive
     @popupActive = true
-    @popup = g = @game.add.graphics(20, @game.height * 0.25)
+    popupHeightFactor = 0.3
+    top = @game.height * ((1 - popupHeightFactor) / 2)
+    @popup = g = @game.add.graphics(20, top)
     g.beginFill(0x000000, 0.3)
-    g.drawRect(0,0,@game.width - 40, @game.height * 0.5)
+    g.drawRect(0,0,@game.width - 40, @game.height * popupHeightFactor)
     g.endFill()
     g.fixedToCamera = true
-    @popupText = t = @game.add.text(24, (@game.height * 0.25) + 4, msg, { font: 16 + 'px monospace', fill: '#fff', align: 'left', wordWrap: true, wordWrapWidth: @game.width - 40 })
+    @popupText = t = @game.add.text(24, top + 4, msg, { font: 28 + 'px monospace', fill: '#fff', align: 'center', wordWrap: true, wordWrapWidth: @game.width - 40 })
     t.fixedToCamera = true
 
   pop: @::createPopup
+  log: (msg) ->
+    @logger.log msg
 
   clearPopup: ->
     if @popup? && @popupText?
@@ -188,13 +194,13 @@ class Seabase.Main
 
   createStatusBars: ->
     @createStatusBar 'top', 0
-    @createStatusBar 'bottom', @totalHeight() - (18 * 2)
+    @createStatusBar 'bottom', @totalHeight() - (18 * 3.2), 3
     @statusBars['top'].text = 'Welcome to Seabase!'
 
-  createStatusBar: (name, sbTop) ->
+  createStatusBar: (name, sbTop, lines = 2) ->
     g = @game.add.graphics(0,0)
     sbFont = 16 
-    sbHeight = ((sbFont + 2) * 2)
+    sbHeight = ((sbFont + 2) * lines)
 
     # status bar background
     g.beginFill(0x000000, 0.3)
@@ -204,7 +210,7 @@ class Seabase.Main
     g.cameraOffset.setTo(0, sbTop)
 
     # starus bar text
-    t = @game.add.text(0, 0, '', { font: sbFont + 'px monospace', fill: '#fff', align: 'left' })
+    t = @game.add.text(0, 0, '', { font: sbFont + 'px monospace', fill: SBConf.colours['base1'], align: 'left' })
     t.fixedToCamera = true
     t.cameraOffset.setTo(0, sbTop)
     @statusBars[name] = t
@@ -225,6 +231,9 @@ class Seabase.Main
 
     # create status bar
     @createStatusBars()
+
+    # create logger
+    @logger = new Seabase.Log(@statusBars['bottom'])
 
     # create map etc
     @restartGame()

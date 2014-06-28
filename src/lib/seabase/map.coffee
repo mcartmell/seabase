@@ -155,7 +155,7 @@ class Seabase.Map
     unless coords
       coords = @findSpaceInRoom()
     [x,y] = coords
-    @player = player || new Seabase.Entity.Player(x,y,this,char: '@',name: 'player', hp: 10)
+    @player = player || new Seabase.Entity.Player(x,y,this,char: '@',name: 'player', hp: 10, sb: @sb)
     @player.x = x
     @player.y = y
     @createEntity(@player)
@@ -221,8 +221,8 @@ class Seabase.Map
         @doCombat(ent, @entityAt(x,y)) 
 
   log: (msg) -> 
-    if @sb.statusBars['bottom']
-      @sb.statusBars['bottom'].text = msg
+    if @sb.logger
+      @sb.logger.log(msg)
 
   pop: (msg) ->
     @sb.pop(msg)
@@ -246,7 +246,6 @@ class Seabase.Map
     @player.giveXP(xp)
 
   tryPlayerMove: (direction) ->
-    @sb.statusBars['bottom'].text = direction
     nl = @newLoc @player.x, @player.y, direction
     [x,y] = nl
     @tryEntityMove(@player, x, y)
@@ -269,6 +268,6 @@ class Seabase.Map
     for i in [1..10]
       [x,y] = @findSpaceInRoom()
       mon = _.shuffle(monsterPool)[0]
-      m = new Seabase.Entity.Monster(x, y, this, hp: mon.hp, name: mon.name, char: mon.char, level: mon.level, power: mon.power)
+      m = new Seabase.Entity.Monster(x, y, this, hp: mon.hp, name: mon.name, char: mon.char, level: mon.level, power: mon.power, sb: @sb)
       @createEntity(m)
 

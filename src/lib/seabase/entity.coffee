@@ -4,6 +4,7 @@ class Seabase.Entity
     @char = args['char']
     @hp = @maxhp = args['hp'] || 10
     @power = args['power'] || 1
+    @sb = args['sb']
   toString: ->
     @char
   right: ->

@@ -10,6 +10,7 @@ class Seabase.Entity.Player extends Seabase.Entity
     @xp += xp
     newRank = @calcRank()
     if newRank > @rank
+      @sb.pop 'Level up!' + "\n" + "You are now level #{newRank}"
       # level up!
       @rank = newRank
       # crude calculations
