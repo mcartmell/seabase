@@ -4,7 +4,6 @@ class Seabase.Entity.Player extends Seabase.Entity
     @xp = 0
     @isPlayer = true
     @rank = 1
-    @power = 5
 
   giveXP: (xp) ->
     @xp += xp
@@ -14,16 +13,9 @@ class Seabase.Entity.Player extends Seabase.Entity
       # level up!
       @rank = newRank
       # crude calculations
-      @power += Seabase.randInt(1,3)
-      @maxhp += Seabase.randInt(1,4)
+      @increaseHP(1,4)
       # regain hitpoints
-      @hp = @maxhp
-
-  giveHP: (hp) ->
-    @hp += hp
-    if @hp > @maxhp
-      @hp = @maxhp
-
+      @regainHP()
   calcRank: ->
     r = 1
     loop

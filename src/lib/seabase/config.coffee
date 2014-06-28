@@ -16,23 +16,36 @@ window.SBConf =
     blue:      '#268bd2';
     cyan:      '#2aa198';
     green:     '#859900';
+  bodyparts:
+    body:
+      fatal: true
+      hp: 10
+    head:
+      fatal: true
+    arm:
+      fatal: false
+    leg:
+      fatal: false
   monsters:
+    human:
+      char: '@'
+      bodyparts:
+        body: {}
     seamonkey:
+      bodyparts:
+        body:
+          hp: 5
       level: 1
-      power: 2
-      hp: 5
       name: 'seamonkey'
       char: 's'
       colour: 'cyan'
     merlion:
       level: 2
-      power: 10 
       hp: 10
       name: 'merlion'
       char: 'm'
     brin:
       level: 3
-      power: 20
       hp: 100
       name: 'brin'
       char: 'B'

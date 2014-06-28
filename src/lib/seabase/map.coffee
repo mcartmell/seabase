@@ -155,7 +155,7 @@ class Seabase.Map
     unless coords
       coords = @findSpaceInRoom()
     [x,y] = coords
-    @player = player || new Seabase.Entity.Player(x,y,this,char: '@',name: 'player', hp: 10, sb: @sb)
+    @player = player || new Seabase.Entity.Player(x,y,this,name: 'player',sb: @sb,template: 'human')
     @player.x = x
     @player.y = y
     @createEntity(@player)
@@ -227,10 +227,13 @@ class Seabase.Map
   pop: (msg) ->
     @sb.pop(msg)
   
-  doCombat: (agg, tgt) ->
-    dmg = randInt(0, agg.power)
-    tgt.hp -= dmg
-    if tgt.hp <= 0
+  doCombat: (agg, tgt, bodyPart = 'body') ->
+    dmg = randInt(agg.combatLevel(), agg.weaponDamage())
+    accuracy = 100 * 1.065 + agg.weaponAttackBonus()
+    hitProbability = accuracy * (0.98 ** tgt.defense())
+    if randInt(0, 100) < hitProbability
+      tgt.applyDamage(bodyPart, dmg)
+    if tgt.isDead()
       if tgt == @player
         @pop "Vanquished by a #{agg.name}"
         @sb.endGame()
@@ -258,16 +261,16 @@ class Seabase.Map
     @map[@player.y][@player.x]
 
   createMonsters: ->
-    allMonsters = _.values(SBConf.monsters)
+    allMonsters = _.keys(SBConf.monsters)
 
     # find suitable monsters up to the current level
     monsterPool = _.filter allMonsters, (mon) ->
-      mon.level <= @sb.current_level + 1
+      SBConf.monsters[mon].level && SBConf.monsters[mon].level <= @sb.current_level + 1
 
     # create 10 monsters?
     for i in [1..10]
       [x,y] = @findSpaceInRoom()
       mon = _.shuffle(monsterPool)[0]
-      m = new Seabase.Entity.Monster(x, y, this, hp: mon.hp, name: mon.name, char: mon.char, level: mon.level, power: mon.power, sb: @sb)
+      m = new Seabase.Entity.Monster(x, y, this, template: mon, sb: @sb)
       @createEntity(m)
 

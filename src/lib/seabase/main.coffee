@@ -217,7 +217,7 @@ class Seabase.Main
 
   refreshStatus: ->
     return unless @statusBars && @statusBars['top']
-    @statusBars['top'].text = 'Seabase   HP:' + @map.player.hp + '(' + @map.player.maxhp + ') XP:' + @map.player.xp + ' Lvl: ' + @map.player.rank + ' Dlvl:' + @current_level
+    @statusBars['top'].text = 'Seabase   HP:' + @map.player.totalHP() + '(' + @map.player.maxHP() + ') XP:' + @map.player.xp + ' Lvl: ' + @map.player.rank + ' Dlvl:' + @current_level
 
   create: =>
     # make world bigger than camera
