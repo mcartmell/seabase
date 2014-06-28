@@ -1,3 +1,4 @@
+Hammer = require 'hammerjs'
 class Seabase.Main
 
   onSwipe: (dir) ->

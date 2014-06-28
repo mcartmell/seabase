@@ -6,6 +6,7 @@ require './lib/seabase/config'
 require './lib/seabase/main'
 require './lib/seabase/map'
 require 'underscore'
+require 'hammerjs'
 
 sb = new Seabase.Main(24,80,32,21,22)
 
