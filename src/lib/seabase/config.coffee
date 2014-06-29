@@ -28,6 +28,7 @@ window.SBConf =
       fatal: false
   monsters:
     human:
+      weapon: 'small_sword'
       char: '@'
       bodyparts:
         body: {}
@@ -39,13 +40,34 @@ window.SBConf =
       name: 'seamonkey'
       char: 's'
       colour: 'cyan'
+      weapon: 'bite'
     merlion:
       level: 2
       hp: 10
       name: 'merlion'
       char: 'm'
+      weapon: 'bite'
     brin:
       level: 3
       hp: 100
       name: 'brin'
       char: 'B'
+      weapon: 'golden_hammer'
+  weapons:
+    golden_hammer:
+      name: 'golden hammer'
+      type: 'crushing'
+      att: 5
+      dmg: [4,8]
+    small_sword:
+      name: 'small sword'
+      type: 'slashing'
+      att: 1
+      dmg: [3,5]
+    bite:
+      name: 'bite'
+      type: 'slashing'
+      att: 2
+      dmg: [2,4]
+  getWeapon: (key) ->
+    SBConf['weapons'][key]

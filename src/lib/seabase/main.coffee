@@ -210,7 +210,7 @@ class Seabase.Main
     g.cameraOffset.setTo(0, sbTop)
 
     # starus bar text
-    t = @game.add.text(0, 0, '', { font: sbFont + 'px monospace', fill: SBConf.colours['base1'], align: 'left' })
+    t = @game.add.text(0, 0, '', { font: sbFont + 'px monospace', fill: SBConf.colours['base1'], align: 'left', wordWrap: true, wordWrapWidth: @totalWidth() })
     t.fixedToCamera = true
     t.cameraOffset.setTo(0, sbTop)
     @statusBars[name] = t

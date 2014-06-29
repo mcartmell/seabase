@@ -218,7 +218,7 @@ class Seabase.Map
       when MoveType.OK
         @moveEntity(ent, x, y)
       when MoveType.FIGHT
-        @doCombat(ent, @entityAt(x,y)) 
+        @doAttack(ent, @entityAt(x,y)) 
 
   log: (msg) -> 
     if @sb.logger
@@ -227,12 +227,29 @@ class Seabase.Map
   pop: (msg) ->
     @sb.pop(msg)
   
-  doCombat: (agg, tgt, bodyPart = 'body') ->
-    dmg = randInt(agg.combatLevel(), agg.weaponDamage())
-    accuracy = 100 * 1.065 + agg.weaponAttackBonus()
-    hitProbability = accuracy * (0.98 ** tgt.defense())
+  doAttack: (agg, tgt) ->
+    # use all of aggressor's attacks
+    for weapon in agg.getAttacks()
+      @doCombat(agg, tgt, 'body', weapon)
+
+  doCombat: (agg, tgt, bodyPart = 'body', weapon = null) ->
+    # default stats for no weapon
+    weaponDamage = 1
+    weaponAttackBonus = 0
+    if weapon?
+      weaponDamage = agg.getWeaponDamage(weapon)
+      weaponAttackBonus = agg.getWeaponAttackBonus(weapon)
+    dmg = weaponDamage
+    accuracy = 100 * 1.065 + weaponAttackBonus
+    hitProbability = accuracy * (0.98 ** tgt.defence())
+    console.log "got attack: #{accuracy} #{dmg}"
     if randInt(0, 100) < hitProbability
       tgt.applyDamage(bodyPart, dmg)
+    logmsg =  "#{agg.name} attacks #{tgt.name} in the #{bodyPart}"
+    if weapon
+      logmsg += " with a #{weapon.attrs.name}"
+    logmsg += " for #{dmg} damage"
+    @log logmsg
     if tgt.isDead()
       if tgt == @player
         @pop "Vanquished by a #{agg.name}"
@@ -241,8 +258,6 @@ class Seabase.Map
         @log "#{agg.name} kills #{tgt.name}"
         @giveXP(tgt)
         @destroyEntity(tgt)
-    else
-      @log "#{agg.name} attacks #{tgt.name}"
 
   giveXP: (monster) ->
     xp = (monster.level) * (monster.level + 6) + 1
