@@ -3569,6 +3569,15 @@ window.SBConf = {
       weapon: 'bite'
     }
   },
+  item_meta: {
+    weapon: {
+      char: '/',
+      droppable: true
+    },
+    armour: {
+      char: ']'
+    }
+  },
   weapons: {
     golden_hammer: {
       name: 'golden hammer',
@@ -3586,7 +3595,8 @@ window.SBConf = {
       name: 'bite',
       type: 'slashing',
       att: 2,
-      dmg: [2, 4]
+      dmg: [2, 4],
+      droppable: false
     }
   },
   getWeapon: function(key) {
@@ -3615,7 +3625,7 @@ Seabase.Entity = (function() {
     }
     this.maxHP = __bind(this.maxHP, this);
     this.name = args['name'] || 'something';
-    this.inventory = null;
+    this.inventory = [];
     this.weapon = null;
     this.wield = [];
     this.bodyParts = {};
@@ -3671,10 +3681,7 @@ Seabase.Entity = (function() {
       };
     }
     if (args['weapon']) {
-      return this.wield.push(new Seabase.Item({
-        type: 'weapon',
-        attrs: SBConf.getWeapon(args['weapon'])
-      }));
+      return this.wield.push(Seabase.Item.fromTemplate('weapon', SBConf.getWeapon(args['weapon'])));
     }
   };
 
@@ -3834,7 +3841,7 @@ Seabase.Entity = (function() {
 })();
 
 
-},{"./item":8,"./item/armour":9,"./util":13}],5:[function(require,module,exports){
+},{"./item":9,"./item/armour":10,"./util":14}],5:[function(require,module,exports){
 var _,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -3923,6 +3930,11 @@ Seabase.Entity.Player = (function(_super) {
     return r;
   };
 
+  Player.prototype.take = function(item) {
+    this.inventory.push(item);
+    return this.sb.log('You picked up the ' + item.name);
+  };
+
   return Player;
 
 })(Seabase.Entity);
@@ -3946,33 +3958,64 @@ Seabase.Feature = (function() {
     return this.char === '<';
   };
 
+  Feature.prototype.canPickup = function() {
+    return this instanceof Seabase.Feature.DroppedItem;
+  };
+
   return Feature;
 
 })();
 
 
 },{}],8:[function(require,module,exports){
+var __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+Seabase.Feature.DroppedItem = (function(_super) {
+  __extends(DroppedItem, _super);
+
+  function DroppedItem(item) {
+    this.item = item;
+    DroppedItem.__super__.constructor.call(this, this.item.getChar() || '!');
+  }
+
+  return DroppedItem;
+
+})(Seabase.Feature);
+
+
+},{}],9:[function(require,module,exports){
 var _;
 
 _ = require('underscore');
 
 Seabase.Item = (function() {
   function Item(args) {
-    var name;
     if (args == null) {
       args = {};
     }
     this.type = args['type'];
     this.attrs = _.clone(args['attrs']);
-    name = this.attrs.name;
+    this.name = this.attrs.name;
   }
+
+  Item.fromTemplate = function(type, template) {
+    return new Seabase.Item({
+      type: type,
+      attrs: template
+    });
+  };
+
+  Item.prototype.getChar = function() {
+    return this.attrs.char || '!';
+  };
 
   return Item;
 
 })();
 
 
-},{"underscore":2}],9:[function(require,module,exports){
+},{"underscore":2}],10:[function(require,module,exports){
 var __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -3996,7 +4039,7 @@ Seabase.Item.Armour = (function(_super) {
 })(Seabase.Item);
 
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 Seabase.Log = (function() {
   function Log(output, buffer) {
     this.output = output;
@@ -4017,7 +4060,7 @@ Seabase.Log = (function() {
 })();
 
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var Hammer,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
@@ -4394,7 +4437,7 @@ Seabase.Main = (function() {
 })();
 
 
-},{"./log":10,"hammerjs":1}],12:[function(require,module,exports){
+},{"./log":11,"hammerjs":1}],13:[function(require,module,exports){
 var _,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
@@ -4407,6 +4450,8 @@ require('./entity/monster');
 require('./entity/player');
 
 require('./feature');
+
+require('./feature/dropped_item');
 
 Seabase.Map = (function() {
   var MoveType, loc, randInt;
@@ -4458,6 +4503,7 @@ Seabase.Map = (function() {
     } else {
       this.spawnPlayer();
     }
+    this.createItems();
     this.redraw();
     return this.log('');
   };
@@ -4499,11 +4545,19 @@ Seabase.Map = (function() {
         this.sb.goDown();
       }
       if (sp.isUpExit()) {
-        return this.sb.goUp();
+        this.sb.goUp();
+      }
+      if (sp.canPickup()) {
+        return this.pickupItem(sp);
       }
     } else {
       return this.tick();
     }
+  };
+
+  Map.prototype.pickupItem = function(droppedItem) {
+    this.map[this.player.y][this.player.x] = '.';
+    return this.player.take(droppedItem.item);
   };
 
   Map.prototype.reEnter = function(args) {
@@ -4635,10 +4689,15 @@ Seabase.Map = (function() {
     return space;
   };
 
-  Map.prototype.placeFeature = function(char) {
-    var x, y, _ref;
+  Map.prototype.placeFeature = function(feature) {
+    var char, x, y, _ref;
     _ref = this.findSpaceForFeature(), x = _ref[0], y = _ref[1];
-    this.map[y][x] = new Seabase.Feature(char);
+    if (feature instanceof Seabase.Feature) {
+      this.map[y][x] = feature;
+    } else {
+      char = feature;
+      this.map[y][x] = new Seabase.Feature(char);
+    }
     return [x, y];
   };
 
@@ -4838,14 +4897,17 @@ Seabase.Map = (function() {
     return this.map[this.player.y][this.player.x];
   };
 
-  Map.prototype.createMonsters = function() {
+  Map.prototype.createMonsters = function(n) {
     var allMonsters, i, m, mon, monsterPool, x, y, _i, _ref, _results;
+    if (n == null) {
+      n = 10;
+    }
     allMonsters = _.keys(SBConf.monsters);
     monsterPool = _.filter(allMonsters, function(mon) {
       return SBConf.monsters[mon].level && SBConf.monsters[mon].level <= this.sb.current_level + 1;
     });
     _results = [];
-    for (i = _i = 1; _i <= 10; i = ++_i) {
+    for (i = _i = 1; 1 <= n ? _i <= n : _i >= n; i = 1 <= n ? ++_i : --_i) {
       _ref = this.findSpaceInRoom(), x = _ref[0], y = _ref[1];
       mon = _.shuffle(monsterPool)[0];
       m = new Seabase.Entity.Monster(x, y, this, {
@@ -4857,12 +4919,43 @@ Seabase.Map = (function() {
     return _results;
   };
 
+  Map.prototype.createItems = function(n) {
+    var allItems, feature, i, item, k, key, theItem, _i, _j, _len, _ref, _results;
+    if (n == null) {
+      n = 10;
+    }
+    allItems = [];
+    _ref = ['weapon', 'armour', 'item'];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      k = _ref[_i];
+      key = k + 's';
+      allItems = allItems.concat(_.values(SBConf[key]).map(function(i) {
+        var hash;
+        hash = _.clone(SBConf.item_meta[k]);
+        _.extend(hash, i);
+        hash.itemType = k;
+        return hash;
+      }));
+    }
+    allItems = allItems.filter(function(item) {
+      return item.droppable === true;
+    });
+    _results = [];
+    for (i = _j = 1; 1 <= n ? _j <= n : _j >= n; i = 1 <= n ? ++_j : --_j) {
+      theItem = _.sample(allItems);
+      item = Seabase.Item.fromTemplate(theItem.itemType, theItem);
+      feature = new Seabase.Feature.DroppedItem(item);
+      _results.push(this.placeFeature(feature));
+    }
+    return _results;
+  };
+
   return Map;
 
 })();
 
 
-},{"./entity":4,"./entity/monster":5,"./entity/player":6,"./feature":7,"underscore":2}],13:[function(require,module,exports){
+},{"./entity":4,"./entity/monster":5,"./entity/player":6,"./feature":7,"./feature/dropped_item":8,"underscore":2}],14:[function(require,module,exports){
 var _;
 
 _ = require('underscore');
@@ -4879,7 +4972,7 @@ Seabase.Util = {
 };
 
 
-},{"underscore":2}],14:[function(require,module,exports){
+},{"underscore":2}],15:[function(require,module,exports){
 var sb, test;
 
 window._ = require('underscore');
@@ -4913,4 +5006,4 @@ window.sb = sb;
 test = new Seabase.Map();
 
 
-},{"./lib/seabase/config":3,"./lib/seabase/main":11,"./lib/seabase/map":12,"hammerjs":1,"underscore":2}]},{},[14])
+},{"./lib/seabase/config":3,"./lib/seabase/main":12,"./lib/seabase/map":13,"hammerjs":1,"underscore":2}]},{},[15])

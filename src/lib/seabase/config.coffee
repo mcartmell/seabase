@@ -47,6 +47,12 @@ window.SBConf =
       name: 'merlion'
       char: 'm'
       weapon: 'bite'
+  item_meta:
+    weapon:
+      char: '/'
+      droppable: true
+    armour:
+      char: ']'
   weapons:
     golden_hammer:
       name: 'golden hammer'
@@ -63,5 +69,6 @@ window.SBConf =
       type: 'slashing'
       att: 2
       dmg: [2,4]
+      droppable: false
   getWeapon: (key) ->
     SBConf['weapons'][key]

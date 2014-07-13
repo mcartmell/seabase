@@ -9,3 +9,6 @@ class Seabase.Feature
 
   isUpExit: ->
     @char == '<'
+
+  canPickup: ->
+    @ instanceof Seabase.Feature.DroppedItem

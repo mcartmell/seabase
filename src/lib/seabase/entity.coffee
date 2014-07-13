@@ -4,7 +4,7 @@ require './item/armour'
 class Seabase.Entity
   constructor: (@x, @y, @map, args = {}) ->
     @name = args['name'] || 'something'
-    @inventory = null
+    @inventory = []
     @weapon = null
     @wield = []
     @bodyParts = {}
@@ -46,7 +46,7 @@ class Seabase.Entity
         hp: args['hp']
         fatal: true
     if args['weapon']
-      @wield.push new Seabase.Item(type: 'weapon', attrs: SBConf.getWeapon(args['weapon']))
+      @wield.push Seabase.Item.fromTemplate('weapon', SBConf.getWeapon(args['weapon']))
   toString: ->
     @char
   right: ->

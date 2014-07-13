@@ -26,3 +26,9 @@ class Seabase.Entity.Player extends Seabase.Entity
       else
         r = next_level
     return r
+
+  # pick up an item and add it to the inventory
+  #TODO: can auto-wield or add cash here depending on the type of item
+  take: (item) ->
+    @inventory.push item
+    @sb.log 'You picked up the ' + item.name

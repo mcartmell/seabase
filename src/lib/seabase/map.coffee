@@ -3,6 +3,7 @@ require './entity'
 require './entity/monster'
 require './entity/player'
 require './feature'
+require './feature/dropped_item'
 class Seabase.Map
   MoveType = {
     NO: 0
@@ -47,6 +48,8 @@ class Seabase.Map
       @spawnPlayer()
 
     # TODO: create items
+    @createItems()
+
     @redraw()
     @log ''
 
@@ -73,11 +76,19 @@ class Seabase.Map
         @sb.goDown()
       if sp.isUpExit()
         @sb.goUp()
+      if sp.canPickup()
+        @pickupItem(sp)
+        
       #TODO: pickup items here
     else
       # otherwise, just increment the tick counter
       @tick()
 
+  # picks up the item on the current square
+  pickupItem: (droppedItem) ->
+    @map[@player.y][@player.x] = '.'
+    @player.take(droppedItem.item)
+    
   reEnter: (args = {}) ->
     @placePlayerOnExit(args['spawnOn'], args['player'])
     @redraw()
@@ -157,9 +168,15 @@ class Seabase.Map
         break if @isEmpty(x,y)
     space
 
-  placeFeature: (char) ->
+  placeFeature: (feature) ->
     [x,y] = @findSpaceForFeature()
-    @map[y][x] = new Seabase.Feature(char)
+    # if it's a feature object, place directly
+    if feature instanceof Seabase.Feature
+      @map[y][x] = feature
+    else
+    # otherwise, just use the char and create an object
+      char = feature
+      @map[y][x] = new Seabase.Feature(char)
     [x,y]
 
   placeDownExit: ->
@@ -307,7 +324,7 @@ class Seabase.Map
     # the map square that the player is on
     @map[@player.y][@player.x]
 
-  createMonsters: ->
+  createMonsters: (n = 10) ->
     allMonsters = _.keys(SBConf.monsters)
 
     # find suitable monsters up to the current level
@@ -315,9 +332,30 @@ class Seabase.Map
       SBConf.monsters[mon].level && SBConf.monsters[mon].level <= @sb.current_level + 1
 
     # create 10 monsters?
-    for i in [1..10]
+    for i in [1..n]
       [x,y] = @findSpaceInRoom()
       mon = _.shuffle(monsterPool)[0]
       m = new Seabase.Entity.Monster(x, y, this, template: mon, sb: @sb)
       @createEntity(m)
 
+  createItems: (n = 10) ->
+    # create a pool of all items
+    allItems = []
+    for k in ['weapon', 'armour', 'item']
+      key = k + 's'
+      # inherit the base attributes for that type
+      allItems = allItems.concat _.values(SBConf[key]).map (i) ->
+        hash = _.clone(SBConf.item_meta[k])
+        _.extend(hash, i)
+        hash.itemType = k
+        hash
+    # filter again by just those items that are droppable
+    allItems = allItems.filter (item) ->
+      item.droppable == true
+
+    # create random items from the pool
+    for i in [1..n]
+      theItem = _.sample(allItems)
+      item = Seabase.Item.fromTemplate(theItem.itemType, theItem)
+      feature = new Seabase.Feature.DroppedItem(item)
+      @placeFeature feature
