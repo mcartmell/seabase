@@ -91,6 +91,7 @@ class Seabase.Main
 
   incTurns: ->
     @turns += 1
+    # regenerate hit points every x number of turns
     if (@turns % (15 - @map.player.rank + 1)) == 0
       @map.player.giveHP(1)
   centerCamera: ->
@@ -101,13 +102,17 @@ class Seabase.Main
     @current_level = level
     # move the current player if we already have one
     if level == 0
+      #XXX debug hack for spawning on an exit
       args['spawnOn'] = '>'
     if @map
+      # if the map already exists, remember the player
       args['player'] = @map.player
     if @levels[level]
+      # if the level is cached, re-enter the same level
       @map = @levels[level]
       @map.reEnter(args)
     else
+      # otherwise, initialize a completely new map
       @map = @levels[level] = @newMap(level)
       @map.init(args)
     @centerCamera()
@@ -193,17 +198,17 @@ class Seabase.Main
       @popupActive = false
 
   createStatusBars: ->
-    @createStatusBar 'top', 0
-    @createStatusBar 'bottom', @totalHeight() - (18 * 3.2), 3
+    @createStatusBar 'top', 0, 2, 16
+    @createStatusBar 'bottom', @totalHeight() - (14 * 4.2), 4
     @statusBars['top'].text = 'Welcome to Seabase!'
 
-  createStatusBar: (name, sbTop, lines = 2) ->
+  createStatusBar: (name, sbTop, lines = 2, font = 12) ->
     g = @game.add.graphics(0,0)
-    sbFont = 16 
+    sbFont = font
     sbHeight = ((sbFont + 2) * lines)
 
     # status bar background
-    g.beginFill(0x000000, 0.3)
+    g.beginFill(0x000000, 0.6)
     g.drawRect(0,0,@totalWidth(), sbHeight)
     g.endFill()
     g.fixedToCamera = true

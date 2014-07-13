@@ -29,15 +29,24 @@ class Seabase.Map
     @exits = {}
 
   init: (args = {}) ->
+    # initialize a new map
     @initMap()
     @rotMap()
+
+    # place exits
     @placeUpExit() unless @level == 0
     @placeDownExit()
+
+    # create monsters
     @createMonsters()
+
+    # spawn the player
     if spawnExit = args['spawnOn']
       @placePlayerOnExit(spawnExit, args['player'])
     else
       @spawnPlayer()
+
+    # TODO: create items
     @redraw()
     @log ''
 
@@ -46,7 +55,9 @@ class Seabase.Map
     @spawnPlayer(coords, player)
 
   tick: ->
+    # do monster moves
     @moveMonsters()
+    # increment theturn counter
     @sb.incTurns()
 
   moveMonsters: ->
@@ -55,13 +66,16 @@ class Seabase.Map
         e.doMove(this)
 
   interact: ->
+    # default is to interact with the current square
     sp = @playerSpace()
     if sp instanceof Seabase.Feature
       if sp.isDownExit()
         @sb.goDown()
       if sp.isUpExit()
         @sb.goUp()
+      #TODO: pickup items here
     else
+      # otherwise, just increment the tick counter
       @tick()
 
   reEnter: (args = {}) ->
@@ -112,11 +126,14 @@ class Seabase.Map
           fillColour = SBConf.colours['base01']
           if r
             if ent = @entityAt(x,y)
+              # a non-player entity
               cell.text = ent.toString()
               fillColour = ent.colour() if ent.colour()
             else
+              # a map feature
               cell.text = @map[y][x].toString()
           else
+            # the player
             cell.text = '@'
             fillColour = '#fff'
           cell.fill = fillColour
@@ -214,10 +231,12 @@ class Seabase.Map
           MoveType.OK
 
   tryEntityMove: (ent,x,y) ->
+    # check that move is possible before doing the move
     switch @canMove(ent, x, y)
       when MoveType.OK
         @moveEntity(ent, x, y)
       when MoveType.FIGHT
+        # if moving into an enemy square, fight!
         @doAttack(ent, @entityAt(x,y)) 
 
   log: (msg) -> 
@@ -233,6 +252,8 @@ class Seabase.Map
       @doCombat(agg, tgt, 'body', weapon)
 
   doCombat: (agg, tgt, bodyPart = 'body', weapon = null) ->
+    # combat is mostly based on http://brogue.wikia.com/wiki/Combat
+
     # default stats for no weapon
     weaponDamage = 1
     weaponAttackBonus = 0
@@ -240,15 +261,23 @@ class Seabase.Map
       weaponDamage = agg.getWeaponDamage(weapon)
       weaponAttackBonus = agg.getWeaponAttackBonus(weapon)
     dmg = weaponDamage
+
+    # calculate hit probability
     accuracy = 100 * 1.065 + weaponAttackBonus
     hitProbability = accuracy * (0.98 ** tgt.defence())
-    console.log "got attack: #{accuracy} #{dmg}"
-    if randInt(0, 100) < hitProbability
-      tgt.applyDamage(bodyPart, dmg)
+    console.log "to hit = #{hitProbability}"
+
+    # generate a detailed log message
     logmsg =  "#{agg.name} attacks #{tgt.name} in the #{bodyPart}"
     if weapon
       logmsg += " with a #{weapon.attrs.name}"
-    logmsg += " for #{dmg} damage"
+    if randInt(0, 100) < hitProbability
+      # hit
+      tgt.applyDamage(bodyPart, dmg)
+      logmsg += " for #{dmg} damage"
+    else
+      # miss
+      logmsg += " but misses"
     @log logmsg
     if tgt.isDead()
       if tgt == @player
@@ -264,15 +293,18 @@ class Seabase.Map
     @player.giveXP(xp)
 
   tryPlayerMove: (direction) ->
+    # do the player's move and 'tick' so that monsters move
     nl = @newLoc @player.x, @player.y, direction
     [x,y] = nl
     @tryEntityMove(@player, x, y)
     @tick()
 
   playerSquare: ->
+    # the actual screen slot where the player is rendered
     @screen()[@player.y][@player.x]
 
   playerSpace: ->
+    # the map square that the player is on
     @map[@player.y][@player.x]
 
   createMonsters: ->

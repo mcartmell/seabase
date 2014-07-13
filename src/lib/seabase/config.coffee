@@ -47,12 +47,6 @@ window.SBConf =
       name: 'merlion'
       char: 'm'
       weapon: 'bite'
-    brin:
-      level: 3
-      hp: 100
-      name: 'brin'
-      char: 'B'
-      weapon: 'golden_hammer'
   weapons:
     golden_hammer:
       name: 'golden hammer'

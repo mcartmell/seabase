@@ -1,5 +1,6 @@
 require './util'
 require './item'
+require './item/armour'
 class Seabase.Entity
   constructor: (@x, @y, @map, args = {}) ->
     @name = args['name'] || 'something'
@@ -7,6 +8,7 @@ class Seabase.Entity
     @weapon = null
     @wield = []
     @bodyParts = {}
+    @def = 0
     if template = args['template']
       @fromTemplate(template)
     @fromArgs[args]
@@ -20,6 +22,7 @@ class Seabase.Entity
   fromArgs: (args) ->
     @char = args['char'] if args['char']
     @name = args['name'] if args['name']
+    @def = args['def'] || 0
     @_colour = args['colour'] if args['colour']
     if bodyParts = args['bodyparts']
       for k in _.keys(bodyParts)
@@ -70,9 +73,11 @@ class Seabase.Entity
   maxHP: =>
     Seabase.Util.sum @allLiveParts().map (bp) ->
       bp.maxhp
+  # regenerate all hp
   regainHP: ->
     for bp in @allLiveParts()
       bp.hp = bp.maxhp
+  # increase hp after level up
   increaseHP: (hp) ->
     totalHP = @maxHP()
     for bp in @allLiveParts()
@@ -83,6 +88,11 @@ class Seabase.Entity
   allLiveParts: ->
     _.values(@bodyParts).filter (bp) ->
       bp.hp > 0
+  getArmourValue: ->
+    rawArmourValue = Seabase.Util.sum @allParts().map (bp) ->
+      if bp.wield then bp.wield.getArmourValue() else 0
+    rawArmourValue * 10
+
   getWeaponDamage: (weapon) ->
     range = weapon.attrs.dmg 
     return Seabase.Util.randInt(range[0], range[1]) + @combatLevel()
@@ -90,21 +100,34 @@ class Seabase.Entity
     weapon.attrs.att
 
   defence: ->
-    0
+    @getArmourValue() + @def
+
+  # give hitpoints to a random damaged bodypart
   giveHP: (hp) ->
     bp = _.sample @allLiveParts().filter (b) ->
       b.hp != b.maxhp
-    bp.hp += hp
-    if bp.hp > bp.maxhp
-      bp.hp = p.maxhp
+    if bp?
+      bp.hp += hp
+      if bp.hp > bp.maxhp
+        bp.hp = p.maxhp
+
+  # player is dead if any 'fatal' bodypart is dead
   isDead: ->
     @allParts().some (bp) ->
       bp.hp <= 0 && bp.fatal
+
+  # apply damage to a bodypart
   applyDamage: (bp, hp) ->
     @bodyParts[bp].hp -= hp
+
+  wear: (item, bp) ->
+    # can wield only if the armour type matches the part
+    if item instanceof Seabase.Item.Armour && item.getArmourType() == bp
+      @bodyParts[bp].wield = item
+
   combatLevel: ->
     @level || @rank
 
   getAttacks: ->
     # allow player to attack with all wielded weapons for now
-    return if @wield.length > 0 then @wield else [null]
+    return if @wield.length > 0 then @wield else []
