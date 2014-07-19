@@ -46,7 +46,10 @@ class Seabase.Entity
         hp: args['hp']
         fatal: true
     if args['weapon']
-      @wield.push Seabase.Item.fromTemplate('weapon', SBConf.getWeapon(args['weapon']))
+      weapon = Seabase.Item.fromTemplate('weapon', SBConf.getWeapon(args['weapon']))
+      @wield.push weapon
+      @inventory.push weapon
+
   toString: ->
     @char
   right: ->
@@ -124,6 +127,16 @@ class Seabase.Entity
     # can wield only if the armour type matches the part
     if item instanceof Seabase.Item.Armour && item.getArmourType() == bp
       @bodyParts[bp].wield = item
+
+  getItems: (type) ->
+    @inventory.filter (item) ->
+      item.type == type
+
+  wieldWeapon: (item) ->
+    #TODO: doesn't check that they have the item or not
+    #TODO: just replaces the whole wield array with the item
+    @wield = [item]
+    @sb.log "You wield the #{item.name}"
 
   combatLevel: ->
     @level || @rank

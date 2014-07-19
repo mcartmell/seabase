@@ -3647,7 +3647,7 @@ Seabase.Entity = (function() {
   };
 
   Entity.prototype.fromArgs = function(args) {
-    var bodyParts, bp, bpType, k, newbp, _i, _len, _ref;
+    var bodyParts, bp, bpType, k, newbp, weapon, _i, _len, _ref;
     if (args['char']) {
       this.char = args['char'];
     }
@@ -3681,7 +3681,9 @@ Seabase.Entity = (function() {
       };
     }
     if (args['weapon']) {
-      return this.wield.push(Seabase.Item.fromTemplate('weapon', SBConf.getWeapon(args['weapon'])));
+      weapon = Seabase.Item.fromTemplate('weapon', SBConf.getWeapon(args['weapon']));
+      this.wield.push(weapon);
+      return this.inventory.push(weapon);
     }
   };
 
@@ -3824,6 +3826,17 @@ Seabase.Entity = (function() {
     }
   };
 
+  Entity.prototype.getItems = function(type) {
+    return this.inventory.filter(function(item) {
+      return item.type === type;
+    });
+  };
+
+  Entity.prototype.wieldWeapon = function(item) {
+    this.wield = [item];
+    return this.sb.log("You wield the " + item.name);
+  };
+
   Entity.prototype.combatLevel = function() {
     return this.level || this.rank;
   };
@@ -3841,7 +3854,7 @@ Seabase.Entity = (function() {
 })();
 
 
-},{"./item":9,"./item/armour":10,"./util":14}],5:[function(require,module,exports){
+},{"./item":9,"./item/armour":10,"./util":15}],5:[function(require,module,exports){
 var _,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -4068,6 +4081,8 @@ Hammer = require('hammerjs');
 
 require('./log');
 
+require('./menu');
+
 Seabase.Main = (function() {
   Main.prototype.onSwipe = function(dir) {
     this.map.tryPlayerMove(dir);
@@ -4077,7 +4092,7 @@ Seabase.Main = (function() {
 
   Main.prototype.onTap = function(e) {
     var dirs;
-    if (!this.inputBlocked()) {
+    if (!this.movementBlocked()) {
       dirs = [];
       if (e.y < (this.game.height * 0.35)) {
         dirs.push('up');
@@ -4098,8 +4113,8 @@ Seabase.Main = (function() {
     return this.doInteract();
   };
 
-  Main.prototype.inputBlocked = function() {
-    return this.gameOver || this.popupActive;
+  Main.prototype.movementBlocked = function() {
+    return this.gameOver || this.popupActive || this.menuActive();
   };
 
   Main.prototype.doInteract = function() {
@@ -4107,6 +4122,8 @@ Seabase.Main = (function() {
       this.restartGame();
     } else if (this.popupActive) {
       return this.clearPopup();
+    } else if (this.menuActive()) {
+      return this.menu.select();
     } else {
       this.map.interact();
       this.map.redraw();
@@ -4120,31 +4137,41 @@ Seabase.Main = (function() {
     return this.game.camera.follow(this.map.playerSquare());
   };
 
+  Main.prototype.getDirFromKey = function(key) {
+    switch (key) {
+      case Phaser.Keyboard.LEFT:
+        return 'left';
+      case Phaser.Keyboard.RIGHT:
+        return 'right';
+      case Phaser.Keyboard.UP:
+        return 'up';
+      case Phaser.Keyboard.DOWN:
+        return 'down';
+      default:
+        return null;
+    }
+  };
+
   Main.prototype.onKeyUp = function(event) {
     var dir, interactPressed;
     dir = null;
-    if (!this.inputBlocked()) {
-      dir = (function() {
-        switch (event.keyCode) {
-          case Phaser.Keyboard.LEFT:
-            return 'left';
-          case Phaser.Keyboard.RIGHT:
-            return 'right';
-          case Phaser.Keyboard.UP:
-            return 'up';
-          case Phaser.Keyboard.DOWN:
-            return 'down';
-          default:
-            return null;
-        }
-      })();
-    }
+    dir = this.getDirFromKey(event.keyCode);
     if (dir) {
-      return this.doPlayerMove(dir);
+      if (this.movementBlocked()) {
+        if (this.menuActive()) {
+          return this.menu.move(dir);
+        }
+      } else {
+        return this.doPlayerMove(dir);
+      }
     }
     interactPressed = event.keyCode === 190 || event.keyCode === Phaser.Keyboard.SPACEBAR;
     if (interactPressed) {
-      return this.doInteract();
+      this.doInteract();
+    }
+    switch (event.keyCode) {
+      case Phaser.Keyboard.M:
+        return this.menu.toggle();
     }
   };
 
@@ -4345,6 +4372,14 @@ Seabase.Main = (function() {
     }
   };
 
+  Main.prototype.createMenu = function() {
+    return this.menu = new Seabase.Menu(this);
+  };
+
+  Main.prototype.menuActive = function() {
+    return this.menu.isVisible();
+  };
+
   Main.prototype.createStatusBars = function() {
     this.createStatusBar('top', 0, 2, 16);
     this.createStatusBar('bottom', this.totalHeight() - (14 * 4.2), 4);
@@ -4393,6 +4428,7 @@ Seabase.Main = (function() {
     this.game.input.keyboard.addKeyCapture([Phaser.Keyboard.UP, Phaser.Keyboard.DOWN, Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT, Phaser.Keyboard.SPACEBAR]);
     this.initScreen();
     this.createStatusBars();
+    this.createMenu();
     this.logger = new Seabase.Log(this.statusBars['bottom']);
     this.restartGame();
     this.game.scale.fullScreenScaleMode = Phaser.ScaleManager.SHOW_ALL;
@@ -4437,7 +4473,7 @@ Seabase.Main = (function() {
 })();
 
 
-},{"./log":11,"hammerjs":1}],13:[function(require,module,exports){
+},{"./log":11,"./menu":14,"hammerjs":1}],13:[function(require,module,exports){
 var _,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
@@ -4956,6 +4992,201 @@ Seabase.Map = (function() {
 
 
 },{"./entity":4,"./entity/monster":5,"./entity/player":6,"./feature":7,"./feature/dropped_item":8,"underscore":2}],14:[function(require,module,exports){
+var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+
+Seabase.Menu = (function() {
+  function Menu(sb) {
+    this.sb = sb;
+    this.buildWieldMenu = __bind(this.buildWieldMenu, this);
+    this.game = sb.game;
+    this.rows = [];
+    this.draw();
+    this.currentMenu = {};
+    this.defaultMenu = {
+      items: [
+        {
+          text: 'wield',
+          callback: this.buildWieldMenu
+        }
+      ]
+    };
+    this.showMenu(this.defaultMenu);
+  }
+
+  Menu.prototype.buildWieldMenu = function() {
+    var allItems, player, weapons, wieldCallback;
+    player = this.sb.map.player;
+    allItems = player.getItems('weapon');
+    weapons = [];
+    allItems.forEach(function(weapon, idx) {
+      return weapons.push([weapon.name, idx]);
+    });
+    wieldCallback = function(idx) {
+      return player.wieldWeapon(allItems[idx]);
+    };
+    return this.showMenu(this.buildSelectMenu(weapons, wieldCallback));
+  };
+
+  Menu.prototype.showMenu = function(menu) {
+    this.clearMenu();
+    menu.items.forEach((function(_this) {
+      return function(item, i) {
+        return _this.rows[i].text = item.text;
+      };
+    })(this));
+    this.currentMenu = menu;
+    return this.selectRow(0);
+  };
+
+  Menu.prototype.clearMenu = function() {
+    return this.all(function(row) {
+      return row.text = '';
+    });
+  };
+
+  Menu.prototype.numItems = function() {
+    if (this.currentMenu != null) {
+      return this.currentMenu.items.length;
+    } else {
+      return 0;
+    }
+  };
+
+  Menu.prototype.select = function() {
+    return this.pick(this.selectedRow);
+  };
+
+  Menu.prototype.buildSelectMenu = function(items, cb) {
+    var hash, i, mitems, _i, _len;
+    mitems = [];
+    for (_i = 0, _len = items.length; _i < _len; _i++) {
+      i = items[_i];
+      hash = i instanceof Array ? {
+        text: i[0],
+        value: i[1]
+      } : {
+        text: i,
+        value: i
+      };
+      mitems.push(hash);
+    }
+    return {
+      items: mitems,
+      selectCallback: cb
+    };
+  };
+
+  Menu.prototype.pick = function(i) {
+    var menuItem;
+    menuItem = this.currentMenu.items[i];
+    if (menuItem.callback) {
+      return menuItem.callback();
+    } else if (menuItem.value != null) {
+      this.currentMenu.selectCallback(menuItem.value);
+      return this.hide();
+    } else if (menuItem.submenu) {
+      return this.showMenu(menuItem.submenu);
+    }
+  };
+
+  Menu.prototype.draw = function() {
+    var fontSize, g, height, i, left, maxRows, padding, rowHeight, t, top, width, x, y, _i, _ref;
+    this.group = new Phaser.Group(this.game);
+    this.group.visible = false;
+    top = 12;
+    left = 12;
+    padding = 12;
+    g = this.game.add.graphics(left, top);
+    width = this.sb.game.width - 24;
+    height = this.sb.game.height - 24;
+    g.beginFill(0x000000, 0.6);
+    g.drawRect(0, 0, width, height);
+    g.endFill();
+    g.fixedToCamera = true;
+    this.group.add(g);
+    fontSize = 48;
+    rowHeight = fontSize * 1.2;
+    maxRows = (g.getBounds().height - (padding * 2)) / rowHeight;
+    for (i = _i = 0, _ref = maxRows - 1; 0 <= _ref ? _i <= _ref : _i >= _ref; i = 0 <= _ref ? ++_i : --_i) {
+      y = top + padding + (i * rowHeight);
+      x = left + padding;
+      t = this.game.add.text(x, y, '', {
+        font: fontSize + 'px monospace',
+        fill: SBConf.colours['base1'],
+        align: 'left'
+      });
+      t.fixedToCamera = true;
+      this.rows[i] = t;
+      this.group.add(t);
+    }
+    return this.selectRow(0);
+  };
+
+  Menu.prototype.hide = function() {
+    return this.group.visible = false;
+  };
+
+  Menu.prototype.show = function() {
+    return this.group.visible = true;
+  };
+
+  Menu.prototype.all = function(cb) {
+    return this.rows.forEach((function(_this) {
+      return function(row) {
+        return cb(row);
+      };
+    })(this));
+  };
+
+  Menu.prototype.isVisible = function() {
+    return this.group && this.group.visible;
+  };
+
+  Menu.prototype.highlightRow = function(i) {
+    this.all(function(row) {
+      return row.fill = SBConf.colours['base1'];
+    });
+    return this.rows[i].fill = SBConf.colours['blue'];
+  };
+
+  Menu.prototype.selectRow = function(i) {
+    if (!(this.numItems() > 0)) {
+      return;
+    }
+    if (i > (this.numItems() - 1)) {
+      return this.selectRow(0);
+    }
+    if (i < 0) {
+      return this.selectRow(this.numItems() - 1);
+    }
+    this.selectedRow = i;
+    return this.highlightRow(i);
+  };
+
+  Menu.prototype.move = function(dir) {
+    switch (dir) {
+      case 'up':
+        return this.selectRow(this.selectedRow - 1);
+      case 'down':
+        return this.selectRow(this.selectedRow + 1);
+    }
+  };
+
+  Menu.prototype.toggle = function() {
+    if (this.isVisible()) {
+      return this.hide();
+    } else {
+      this.showMenu(this.defaultMenu);
+      return this.show();
+    }
+  };
+
+  return Menu;
+
+})();
+
+
+},{}],15:[function(require,module,exports){
 var _;
 
 _ = require('underscore');
@@ -4972,7 +5203,7 @@ Seabase.Util = {
 };
 
 
-},{"underscore":2}],15:[function(require,module,exports){
+},{"underscore":2}],16:[function(require,module,exports){
 var sb, test;
 
 window._ = require('underscore');
@@ -5006,4 +5237,4 @@ window.sb = sb;
 test = new Seabase.Map();
 
 
-},{"./lib/seabase/config":3,"./lib/seabase/main":12,"./lib/seabase/map":13,"hammerjs":1,"underscore":2}]},{},[15])
+},{"./lib/seabase/config":3,"./lib/seabase/main":12,"./lib/seabase/map":13,"hammerjs":1,"underscore":2}]},{},[16])

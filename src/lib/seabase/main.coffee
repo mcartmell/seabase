@@ -1,5 +1,6 @@
 Hammer = require 'hammerjs'
 require './log'
+require './menu'
 
 class Seabase.Main
 
@@ -9,7 +10,7 @@ class Seabase.Main
     @game.camera.follow(@map.playerSquare())
     
   onTap: (e) =>
-    unless @inputBlocked()
+    unless @movementBlocked()
       dirs = []
       if (e.y < (@game.height * 0.35))
         dirs.push 'up'
@@ -29,8 +30,8 @@ class Seabase.Main
     # if non-directional, interact instead
     @doInteract()
 
-  inputBlocked: ->
-    @gameOver || @popupActive
+  movementBlocked: ->
+    @gameOver || @popupActive || @menuActive()
 
   doInteract: ->
     if @gameOver
@@ -38,6 +39,8 @@ class Seabase.Main
       return
     else if @popupActive
       @clearPopup()
+    else if @menuActive()
+      return @menu.select()
     else
       @map.interact()
       @map.redraw()
@@ -48,26 +51,36 @@ class Seabase.Main
     @map.redraw()
     @game.camera.follow(@map.playerSquare())
 
+  getDirFromKey: (key)->
+    switch key
+      when Phaser.Keyboard.LEFT
+        'left' 
+      when Phaser.Keyboard.RIGHT
+        'right' 
+      when Phaser.Keyboard.UP
+        'up' 
+      when Phaser.Keyboard.DOWN
+        'down'
+      else
+        null
+
   onKeyUp: (event) =>
     dir = null
-    unless @inputBlocked()
-      dir = switch event.keyCode
-        when Phaser.Keyboard.LEFT
-          'left' 
-        when Phaser.Keyboard.RIGHT
-          'right' 
-        when Phaser.Keyboard.UP
-          'up' 
-        when Phaser.Keyboard.DOWN
-          'down'
-        else
-          null
+    dir = @getDirFromKey(event.keyCode)
     if dir
-      return @doPlayerMove(dir)
+      if @movementBlocked()
+        if @menuActive()
+          return @menu.move(dir)
+      else
+        return @doPlayerMove(dir)
 
     interactPressed = (event.keyCode == 190 || event.keyCode == Phaser.Keyboard.SPACEBAR)
     if interactPressed
       @doInteract()
+
+    switch event.keyCode
+      when Phaser.Keyboard.M
+        return @menu.toggle()
 
   endGame: ->
     @gameOver = true
@@ -197,6 +210,12 @@ class Seabase.Main
       @popupText.destroy()
       @popupActive = false
 
+  createMenu: ->
+    @menu = new Seabase.Menu(@)
+
+  menuActive: ->
+    @menu.isVisible()
+
   createStatusBars: ->
     @createStatusBar 'top', 0, 2, 16
     @createStatusBar 'bottom', @totalHeight() - (14 * 4.2), 4
@@ -236,6 +255,9 @@ class Seabase.Main
 
     # create status bar
     @createStatusBars()
+
+    # create initial menu
+    @createMenu()
 
     # create logger
     @logger = new Seabase.Log(@statusBars['bottom'])
